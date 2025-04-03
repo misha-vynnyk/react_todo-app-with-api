@@ -24,7 +24,7 @@ export const App: React.FC = () => {
   const [todoTitle, setTodoTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingTodo, setIsLoadingTodo] = useState<number | null>(null);
-
+  const [failedTodoId, setFailedTodoId] = useState<number | null>(null);
   const [filterTerm, setFilterTerm] = useState('All');
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -49,7 +49,13 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, [todos]);
+  }, []);
+
+  useEffect(() => {
+    if (errorMessage === 'Unable to add a todo') {
+      inputRef.current?.focus();
+    }
+  }, [errorMessage]);
 
   useEffect(() => {
     const activeCount = todos.reduce((acm, todo) => {
@@ -97,6 +103,7 @@ export const App: React.FC = () => {
         setIsLoading(false);
         setIsLoadingTodo(null);
         setTempoTodo(null);
+        setTimeout(() => inputRef.current?.focus(), 0);
 
         setTimeout(() => setErrorMessage(''), 3000);
       });
@@ -113,29 +120,35 @@ export const App: React.FC = () => {
         setErrorMessage('Unable to delete a todo');
         setTimeout(() => setErrorMessage(''), 3000);
       })
-      .finally(() => setIsLoadingTodo(null));
+      .finally(() => {
+        setIsLoadingTodo(null);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      });
   }
 
-  function updateTodo(todoId: number, newStatus: boolean) {
+  function updateTodo(todoId: number, updates: Partial<Todo>) {
     setIsLoadingTodo(todoId);
+    setFailedTodoId(null);
+
+    const previousTodos = todos;
+
     setTodos(currentTodos =>
       currentTodos.map(todo =>
-        todo.id === todoId ? { ...todo, completed: newStatus } : todo,
+        todo.id === todoId ? { ...todo, ...updates } : todo,
       ),
     );
 
     todoService
-      .updateTodo(todoId, newStatus)
+      .updateTodo(todoId, updates)
       .catch(() => {
-        setTodos(prevTodos => prevTodos);
         setErrorMessage('Unable to update a todo');
         setTimeout(() => setErrorMessage(''), 3000);
 
-        setTodos(currentTodos =>
-          currentTodos.map(todo =>
-            todo.id === todoId ? { ...todo, completed: !newStatus } : todo,
-          ),
-        );
+        if (updates.title !== undefined) {
+          setFailedTodoId(todoId);
+        }
+
+        setTodos(previousTodos);
       })
       .finally(() => {
         setIsLoadingTodo(null);
@@ -167,11 +180,11 @@ export const App: React.FC = () => {
     todos.forEach(todo => {
       if (todo.completed === true && leftItems === 0) {
         if (todo.id && todo.completed === true) {
-          updateTodo(todo.id, false);
+          updateTodo(todo.id, { completed: false });
         }
       } else {
         if (todo.id && todo.completed === false) {
-          updateTodo(todo.id, true);
+          updateTodo(todo.id, { completed: true });
         }
       }
     });
@@ -226,7 +239,7 @@ export const App: React.FC = () => {
       return;
     }
 
-    updateTodo(todoId, newStatus);
+    updateTodo(todoId, { completed: newStatus });
   }
 
   function handleFiltered(filter: string) {
@@ -251,7 +264,6 @@ export const App: React.FC = () => {
 
       <div className="todoapp__content">
         <header className="todoapp__header">
-          {/* this button should have `active` class only if all todos are completed */}
           {todos.length > 0 && (
             <button
               type="button"
@@ -284,8 +296,10 @@ export const App: React.FC = () => {
               isLoading={isLoading}
               tempoTodo={tempoTodo}
               todos={filteredTodos}
+              failedTodoId={failedTodoId}
               handleChangeStatus={handleChangeStatus}
               handleDeleteTodo={handleDeleteTodo}
+              updateTodo={updateTodo}
             />
 
             <Footer

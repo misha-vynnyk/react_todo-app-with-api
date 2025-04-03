@@ -11,8 +11,10 @@ interface Props {
   tempoTodo: Todo | null;
   isLoading: boolean;
   isLoadingTodo: number | null;
+  failedTodoId: number | null;
   handleChangeStatus: (todoId: number | undefined, newStatus: boolean) => void;
   handleDeleteTodo: (id?: number) => void;
+  updateTodo: (todoId: number, updates: Partial<Todo>) => void;
 }
 
 const TodosList: React.FC<Props> = React.memo(
@@ -21,8 +23,10 @@ const TodosList: React.FC<Props> = React.memo(
     tempoTodo,
     isLoading,
     isLoadingTodo,
+    failedTodoId,
     handleChangeStatus,
     handleDeleteTodo,
+    updateTodo,
   }) => {
     const nodeRef = useRef(null);
 
@@ -43,8 +47,10 @@ const TodosList: React.FC<Props> = React.memo(
               <TodoItem
                 todo={todo}
                 isLoadingTodo={isLoadingTodo}
+                failedTodoId={failedTodoId}
                 onDelete={() => handleDeleteTodo(todo.id)}
                 onChange={() => handleChangeStatus(todo.id, !todo.completed)}
+                updateTodo={updateTodo}
               />
             </CSSTransition>
           ))}
